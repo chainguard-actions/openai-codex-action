@@ -1,6 +1,12 @@
 # openai/codex-action
 
-Hardened GitHub Action by [Chainguard](https://www.chainguard.dev).
+Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/openai/codex-action](https://github.com/openai/codex-action).
+
+## Versions
+
+| Version | Tag | Upstream commit |
+|---------|-----|-----------------|
+| v1.6 | [`v1.6`](https://github.com/chainguard-actions/codex-action/tree/v1.6) | — |
 
 ## Privacy
 
