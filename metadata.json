@@ -1,5 +1,5 @@
 {
   "owner": "openai",
   "name": "codex-action",
-  "visibility": ""
+  "visibility": "internal"
 }
