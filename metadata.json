@@ -1,5 +1,6 @@
 {
   "owner": "openai",
   "name": "codex-action",
-  "visibility": "internal"
+  "visibility": "internal",
+  "block_publish": false
 }

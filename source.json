@@ -1,4 +1,6 @@
 {
-  "upstream": "openai/codex-action",
-  "version": "v1.6"
+  "owner": "openai",
+  "repo": "codex-action",
+  "version": "",
+  "url": "https://github.com/openai/codex-action"
 }
