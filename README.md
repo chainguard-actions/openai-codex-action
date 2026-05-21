@@ -6,7 +6,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
-| v1.6 | [`v1.6`](https://github.com/chainguard-actions/openai--codex-action/tree/v1.6) | — |
+| v1.6 | [`v1.6`](https://github.com/chainguard-actions/openai-codex-action/tree/v1.6) | — |
 
 ## Privacy
 
