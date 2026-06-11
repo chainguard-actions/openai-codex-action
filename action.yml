@@ -104,6 +104,23 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
     - name: Validate Windows safety strategy
       if: ${{ runner.os == 'Windows' }}
       shell: bash
@@ -115,14 +132,12 @@ runs:
           echo "because no viable sandboxing options are available at this time." >&2
           exit 1
         fi
-
     - name: Ensure Node.js available
       # Pin to a commit hash because some repositories require it:
       # https://github.com/openai/codex-action/issues/43
       uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version: "20"
-
     - name: Check repository write access
       env:
         ACTION_PATH: ${{ github.action_path }}
@@ -134,19 +149,16 @@ runs:
         node "$ACTION_PATH/dist/main.js" check-write-access \
           --allow-bots "$ALLOW_BOTS" \
           --allow-users "$ALLOW_USERS"
-
     - name: Install Codex CLI
       shell: bash
       env:
         CODEX_VERSION: ${{ inputs['codex-version'] }}
       run: npm install -g "@openai/codex@${CODEX_VERSION}"
-
     - name: Install Codex Responses API proxy
       shell: bash
       env:
         CODEX_VERSION: ${{ inputs['codex-version'] }}
       run: npm install -g "@openai/codex-responses-api-proxy@${CODEX_VERSION}"
-
     - name: Resolve Codex home
       id: resolve_home
       shell: bash
@@ -162,7 +174,6 @@ runs:
           --safety-strategy "$SAFETY_STRATEGY" \
           --codex-user "$CODEX_USER" \
           --github-run-id "$CODEX_RUN_ID"
-
     - name: Determine server info path
       id: derive_server_info
       shell: bash
@@ -170,9 +181,11 @@ runs:
         CODEX_HOME: ${{ steps.resolve_home.outputs.codex-home }}
         CODEX_RUN_ID: ${{ github.run_id }}
       run: |
-        server_info_file="$CODEX_HOME/$CODEX_RUN_ID.json"
-        echo "server_info_file=$server_info_file" >> "$GITHUB_OUTPUT"
-
+        safe_codex_home=$(printf '%s' "$CODEX_HOME" | tr -d '\n\r')
+        safe_codex_run_id=$(printf '%s' "$CODEX_RUN_ID" | tr -d '\n\r')
+        server_info_file="$safe_codex_home/$safe_codex_run_id.json"
+        safe_server_info_file=$(printf '%s' "$server_info_file" | tr -d '\n\r')
+        echo "server_info_file=$safe_server_info_file" >> "$GITHUB_OUTPUT"
     - name: Check Responses API proxy status
       id: start_proxy
       if: ${{ inputs['openai-api-key'] != '' }}
@@ -186,7 +199,6 @@ runs:
         else
           echo "server_info_file_exists=false" >> "$GITHUB_OUTPUT"
         fi
-
     # This is its own step to minimize the runtime logic that has access to the
     # API key. Note we use `env -u PROXY_API_KEY` to ensure extra copies of the
     # key do not end up in the memory of the `codex-responses-api-proxy`
@@ -212,7 +224,6 @@ runs:
         (
           printenv PROXY_API_KEY | env -u PROXY_API_KEY "${args[@]}"
         ) &
-
     - name: Wait for Responses API proxy
       if: ${{ inputs['openai-api-key'] != '' && steps.start_proxy.outputs.server_info_file_exists == 'false' }}
       shell: bash
@@ -234,7 +245,6 @@ runs:
           sudo chmod 444 "$SERVER_INFO_FILE"
           sudo chown root "$SERVER_INFO_FILE"
         fi
-
     # This step has an output named `port`.
     - name: Read server info
       id: read_server_info
@@ -244,7 +254,6 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
         SERVER_INFO_FILE: ${{ steps.derive_server_info.outputs.server_info_file }}
       run: node "$ACTION_PATH/dist/main.js" read-server-info "$SERVER_INFO_FILE"
-
     - name: Write Codex proxy config
       if: ${{ inputs['openai-api-key'] != '' }}
       shell: bash
@@ -258,7 +267,6 @@ runs:
           --codex-home "$CODEX_HOME" \
           --port "$PROXY_PORT" \
           --safety-strategy "$SAFETY_STRATEGY"
-
     - name: Enable Linux user namespaces for bubblewrap
       if: ${{ runner.os == 'Linux' && runner.environment == 'github-hosted' && (inputs['openai-api-key'] != '' || inputs.prompt != '' || inputs['prompt-file'] != '') }}
       shell: bash
@@ -284,7 +292,6 @@ runs:
           echo "Disabling kernel.apparmor_restrict_unprivileged_userns for bubblewrap."
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
         fi
-
     - name: Drop sudo privilege, if appropriate
       if: ${{ inputs['safety-strategy'] == 'drop-sudo' && inputs['openai-api-key'] != '' }}
       shell: bash
@@ -303,7 +310,6 @@ runs:
             exit 1
             ;;
         esac
-
     - name: Verify sudo privilege removed
       if: ${{ inputs['safety-strategy'] == 'drop-sudo' && inputs['openai-api-key'] != '' }}
       shell: bash
@@ -313,7 +319,6 @@ runs:
           exit 1
         fi
         echo "Confirmed sudo privilege is disabled."
-
     - name: Run codex exec
       id: run_codex
       if: ${{ inputs.prompt != '' || inputs['prompt-file'] != '' }}
