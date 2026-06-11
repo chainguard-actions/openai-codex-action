@@ -1,5 +1,7 @@
 # openai/codex-action
 
+Run `codex exec` with a prompt.
+
 Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/openai/codex-action](https://github.com/openai/codex-action).
 
 ## Versions
