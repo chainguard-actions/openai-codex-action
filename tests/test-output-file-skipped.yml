@@ -1,0 +1,30 @@
+name: Test output-file not created when no prompt
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTOR: test-user
+      GITHUB_REPOSITORY: openai/codex-action
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # When no prompt is provided, run_codex is skipped and no output file
+      # should be written, even if output-file is specified.
+      # allow-users='*' bypasses the GitHub API write-access check.
+      - id: action
+        uses: .
+        with:
+          prompt: ""
+          output-file: "/tmp/codex-output.txt"
+          safety-strategy: "unsafe"
+          allow-users: "*"
+
+      - name: Assert output file was not created
+        run: |
+          if [ -f "/tmp/codex-output.txt" ]; then
+            echo "FAIL: output file should not have been created when no prompt was given"
+            exit 1
+          fi
+          echo "PASS: output file was not created as expected"

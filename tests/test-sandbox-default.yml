@@ -1,0 +1,35 @@
+name: Test sandbox default (workspace-write) with no prompt
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTOR: test-user
+      GITHUB_REPOSITORY: openai/codex-action
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test that the action accepts the default sandbox mode (workspace-write)
+      # and completes without error when no prompt is provided.
+      # The run_codex step is skipped because prompt is empty.
+      # allow-users='*' bypasses the GitHub API write-access check.
+      - id: action
+        uses: .
+        with:
+          prompt: ""
+          sandbox: "workspace-write"
+          safety-strategy: "unsafe"
+          allow-users: "*"
+
+      - name: Assert action completed successfully
+        env:
+          ACTUAL: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "actual final-message: '$ACTUAL'"
+          # When no prompt is given, final-message should be empty
+          if [ -n "$ACTUAL" ]; then
+            echo "FAIL: expected empty final-message but got: $ACTUAL"
+            exit 1
+          fi
+          echo "PASS: action completed with workspace-write sandbox and no prompt"

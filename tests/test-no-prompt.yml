@@ -1,0 +1,34 @@
+name: Test no-prompt scenario (codex exec skipped)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTOR: test-user
+      GITHUB_REPOSITORY: openai/codex-action
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # When no prompt is provided, the run_codex step is skipped entirely.
+      # The action should still complete successfully (installing Node, checking
+      # write access, etc.) without attempting to call the OpenAI API.
+      # allow-users='*' bypasses the GitHub API write-access check.
+      - id: action
+        uses: .
+        with:
+          prompt: ""
+          safety-strategy: "unsafe"
+          allow-users: "*"
+
+      # The final-message output should be empty because run_codex was skipped.
+      - name: Assert final-message is empty
+        env:
+          ACTUAL: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "actual: '$ACTUAL'"
+          if [ -n "$ACTUAL" ]; then
+            echo "FAIL: expected empty final-message but got: $ACTUAL"
+            exit 1
+          fi
+          echo "PASS: final-message is empty as expected"
