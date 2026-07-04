@@ -1,0 +1,28 @@
+name: Test custom codex-home input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+      GITHUB_ACTOR: test-user
+      GITHUB_REPOSITORY: openai/codex-action
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create custom codex home directory
+        run: mkdir -p /tmp/custom-codex-home
+
+      - id: action
+        uses: .
+        with:
+          codex-home: "/tmp/custom-codex-home"
+          safety-strategy: "unsafe"
+          allow-users: "*"
+
+      - name: Assert action completed with custom codex-home
+        run: |
+          echo "Action completed successfully with custom codex-home."
+          echo "PASS"

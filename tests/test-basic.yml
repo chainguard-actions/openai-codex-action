@@ -1,0 +1,26 @@
+name: Test basic usage (no API key, no prompt)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+      GITHUB_ACTOR: test-user
+      GITHUB_REPOSITORY: openai/codex-action
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          # No openai-api-key → proxy steps are skipped
+          # No prompt → run_codex step is skipped
+          safety-strategy: "unsafe"
+          allow-users: "*"
+
+      - name: Assert action completed without error
+        run: |
+          echo "Action completed successfully with no API key and no prompt."
+          echo "PASS"
