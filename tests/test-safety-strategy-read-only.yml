@@ -1,0 +1,29 @@
+name: Test read-only safety strategy accepted
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # Required by check-write-access step before allow-users is evaluated
+      GITHUB_ACTOR: "test-user"
+      GITHUB_REPOSITORY: "openai/codex-action"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test that the action accepts safety-strategy=read-only without error.
+      # The drop-sudo steps only run when openai-api-key != '', so with no
+      # API key the safety-strategy value is accepted but not enforced here.
+      - id: action
+        uses: .
+        with:
+          prompt: ""
+          prompt-file: ""
+          openai-api-key: ""
+          safety-strategy: "read-only"
+          # Allow all users to bypass the GitHub write-access check
+          allow-users: "*"
+
+      - name: Assert action completed with read-only safety strategy
+        run: |
+          echo "PASS: action accepted safety-strategy=read-only without error"

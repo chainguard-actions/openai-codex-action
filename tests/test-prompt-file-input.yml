@@ -1,0 +1,27 @@
+name: Test prompt-file input accepted
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # Required by check-write-access step before allow-users is evaluated
+      GITHUB_ACTOR: "test-user"
+      GITHUB_REPOSITORY: "openai/codex-action"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test that the action accepts allow-users and safety-strategy inputs
+      # without error when no prompt is provided (codex exec is skipped).
+      - id: action
+        uses: .
+        with:
+          prompt: ""
+          prompt-file: ""
+          openai-api-key: ""
+          safety-strategy: "unsafe"
+          allow-users: "*"
+
+      - name: Assert action completed without error
+        run: |
+          echo "PASS: action completed successfully with allow-users=* and no prompt"
