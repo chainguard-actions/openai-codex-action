@@ -17,7 +17,7 @@ jobs:
           # /home/runner/work, but /home/runner has permissions 750.
           sudo usermod -a -G runner guest
 
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@v5
 
       - name: Change ownership
         run: |
@@ -31,7 +31,7 @@ jobs:
           sudo find "$GITHUB_WORKSPACE" -type d -exec chmod g+s {} +
 
       - name: Run Codex as unprivileged user
-        uses: openai/codex-action@6b771854be52d8637d060e4b15120b9d746282ab # v1
+        uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           safety-strategy: unprivileged-user

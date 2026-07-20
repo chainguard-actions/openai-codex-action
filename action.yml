@@ -197,7 +197,7 @@ runs:
         CODEX_RUN_ID: ${{ github.run_id }}
       run: |
         server_info_file="$CODEX_HOME/$CODEX_RUN_ID.json"
-        safe_server_info_file=$(printf '%s' "$server_info_file" | tr -d '\n\r')
+        safe_server_info_file="$(printf '%s' "$server_info_file" | tr -d '\n\r')"
         echo "server_info_file=$safe_server_info_file" >> "$GITHUB_OUTPUT"
     - name: Check Responses API proxy status
       id: start_proxy
