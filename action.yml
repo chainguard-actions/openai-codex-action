@@ -196,10 +196,9 @@ runs:
         CODEX_HOME: ${{ steps.resolve_home.outputs.codex-home }}
         CODEX_RUN_ID: ${{ github.run_id }}
       run: |
-        safe_home=$(printf '%s' "$CODEX_HOME" | tr -d '\n\r')
-        safe_run_id=$(printf '%s' "$CODEX_RUN_ID" | tr -d '\n\r')
-        server_info_file="$safe_home/$safe_run_id.json"
-        echo "server_info_file=$server_info_file" >> "$GITHUB_OUTPUT"
+        server_info_file="$CODEX_HOME/$CODEX_RUN_ID.json"
+        safe_server_info_file="$(printf '%s' "$server_info_file" | tr -d '\n\r')"
+        echo "server_info_file=$safe_server_info_file" >> "$GITHUB_OUTPUT"
     - name: Check Responses API proxy status
       id: start_proxy
       if: ${{ inputs['openai-api-key'] != '' }}

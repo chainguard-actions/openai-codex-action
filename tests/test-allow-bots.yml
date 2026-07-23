@@ -1,0 +1,30 @@
+name: Test allow-bots flag accepted
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # allow-bots=true permits github-actions[bot] to bypass the write-access
+      # check. We also set allow-users='*' so the real actor (which may not be
+      # a bot) is also permitted. No prompt → codex exec step is skipped.
+      - id: action
+        uses: .
+        with:
+          allow-bots: "true"
+          allow-users: "*"
+          safety-strategy: unsafe
+          codex-version: "latest"
+
+      - name: Assert action completed (allow-bots and allow-users accepted)
+        env:
+          FINAL_MSG: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "final-message: '$FINAL_MSG'"
+          if [ -n "$FINAL_MSG" ]; then
+            echo "FAIL: expected empty final-message when no prompt is given"
+            exit 1
+          fi
+          echo "PASS: action accepted allow-bots=true and allow-users=* without error"

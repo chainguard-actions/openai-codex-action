@@ -1,0 +1,28 @@
+name: Test allow-users wildcard bypasses write-access check
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # allow-users='*' means any actor is permitted without a collaborator check.
+      # No prompt → codex exec step is skipped.
+      - id: action
+        uses: .
+        with:
+          allow-users: "*"
+          safety-strategy: unsafe
+          codex-version: "latest"
+
+      - name: Assert action completed successfully (no final-message since no prompt)
+        env:
+          FINAL_MSG: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "final-message: '$FINAL_MSG'"
+          if [ -n "$FINAL_MSG" ]; then
+            echo "FAIL: expected empty final-message when no prompt is given, got: $FINAL_MSG"
+            exit 1
+          fi
+          echo "PASS: action completed with allow-users=* and no prompt"

@@ -1,0 +1,30 @@
+name: Test no-prompt (setup only)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # No prompt provided → Run codex exec step is skipped.
+      # All setup steps (Node.js, write-access check, resolve-codex-home) still run.
+      # Use allow-users='*' to bypass write-access check and safety-strategy=unsafe
+      # to avoid sudo manipulation.
+      - id: action
+        uses: .
+        with:
+          allow-users: "*"
+          safety-strategy: unsafe
+          codex-version: "latest"
+
+      - name: Assert final-message output is empty (codex exec was skipped)
+        env:
+          FINAL_MSG: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "final-message: '$FINAL_MSG'"
+          if [ -n "$FINAL_MSG" ]; then
+            echo "FAIL: expected empty final-message when no prompt is given, got: $FINAL_MSG"
+            exit 1
+          fi
+          echo "PASS: final-message is empty as expected"

@@ -1,0 +1,31 @@
+name: Test custom codex-home directory
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Provide a custom codex-home path. The action should resolve it and
+      # use it as the Codex home directory. No prompt → codex exec step is skipped.
+      # The directory is only created when an API key is provided (write-proxy-config
+      # step), so we just verify the action completes without error.
+      - id: action
+        uses: .
+        with:
+          codex-home: /tmp/test-codex-home
+          allow-users: "*"
+          safety-strategy: unsafe
+          codex-version: "latest"
+
+      - name: Assert final-message is empty (no prompt given)
+        env:
+          FINAL_MSG: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "final-message: '$FINAL_MSG'"
+          if [ -n "$FINAL_MSG" ]; then
+            echo "FAIL: expected empty final-message when no prompt is given"
+            exit 1
+          fi
+          echo "PASS: action accepted custom codex-home and completed without error"

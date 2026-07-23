@@ -1,0 +1,40 @@
+name: Test codex-version installs specific version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Specify codex-version=latest to install the latest Codex CLI.
+      # The action installs @openai/codex@<version> via npm.
+      # No prompt → codex exec is skipped.
+      # Use allow-users='*' to bypass write-access check.
+      - id: action
+        uses: .
+        with:
+          codex-version: "latest"
+          allow-users: "*"
+          safety-strategy: unsafe
+
+      - name: Assert codex CLI was installed
+        run: |
+          echo "Checking codex is available on PATH..."
+          if ! command -v codex >/dev/null 2>&1; then
+            echo "FAIL: codex command not found after install"
+            exit 1
+          fi
+          echo "codex found at: $(command -v codex)"
+          echo "PASS: codex CLI is installed"
+
+      - name: Assert final-message is empty (no prompt given)
+        env:
+          FINAL_MSG: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "final-message: '$FINAL_MSG'"
+          if [ -n "$FINAL_MSG" ]; then
+            echo "FAIL: expected empty final-message when no prompt is given"
+            exit 1
+          fi
+          echo "PASS"
