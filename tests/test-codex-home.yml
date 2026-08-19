@@ -1,0 +1,46 @@
+name: Test custom codex-home directory
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a custom codex home directory
+        run: mkdir -p /tmp/custom-codex-home
+
+      - name: Run action with custom codex-home and no prompt
+        id: action
+        uses: .
+        with:
+          codex-home: "/tmp/custom-codex-home"
+          safety-strategy: "unsafe"
+          # No prompt — codex exec step is skipped
+          # No openai-api-key — proxy steps are also skipped
+          # allow-users '*' bypasses the write-access API check under act
+          allow-users: "*"
+          # Provide a valid version so npm install does not fail with empty @
+          codex-version: "latest"
+
+      - name: Assert action completed without error
+        env:
+          FINAL_MSG: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "final-message: '$FINAL_MSG'"
+          # No prompt was given, so final-message should be empty.
+          # The key assertion is that the action accepted codex-home=/tmp/custom-codex-home
+          # and completed the resolve-codex-home step without error.
+          if [ -n "$FINAL_MSG" ]; then
+            echo "FAIL: expected empty final-message but got: $FINAL_MSG"
+            exit 1
+          fi
+          echo "PASS: action completed with custom codex-home"
+
+      - name: Assert custom codex-home directory still exists
+        run: |
+          if [ ! -d "/tmp/custom-codex-home" ]; then
+            echo "FAIL: custom codex-home directory was removed"
+            exit 1
+          fi
+          echo "PASS: custom codex-home directory exists"

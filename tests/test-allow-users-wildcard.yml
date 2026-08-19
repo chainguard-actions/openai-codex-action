@@ -1,0 +1,30 @@
+name: Test allow-users wildcard bypasses write-access check
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run action with allow-users wildcard and no prompt
+        id: action
+        uses: .
+        with:
+          # allow-users '*' should allow any GitHub user to run this action
+          allow-users: "*"
+          safety-strategy: "unsafe"
+          # No prompt — codex exec step is skipped
+          # No openai-api-key — proxy steps are also skipped
+          # Provide a valid version so npm install does not fail with empty @
+          codex-version: "latest"
+
+      - name: Assert action completed successfully
+        env:
+          FINAL_MSG: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "final-message: '$FINAL_MSG'"
+          # No prompt was given, so final-message should be empty.
+          # The key assertion is that the action did NOT fail at the
+          # check-write-access step (which would have exited non-zero).
+          echo "PASS: action completed without error; write-access check passed with allow-users='*'"

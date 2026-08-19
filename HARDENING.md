@@ -8,27 +8,35 @@
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
-**Harden Agent Version:** `1`
+**Harden Agent Version:** `2`
 
-Action **openai--codex-action/v1.9** was hardened automatically. 1 finding(s) were identified and resolved across 1 iteration(s).
+Action **openai--codex-action/v1.9** was hardened automatically. 2 finding(s) were identified and resolved across 1 iteration(s).
 
 ## Findings Fixed
 
 ### github-env-injection (severity: high)
 
-The 'Determine server info path' step writes a value derived from `steps.resolve_home.outputs.codex-home` (an untrusted step output per the check spec) to `$GITHUB_OUTPUT` without the required sanitization step (`printf '%s' ... | tr -d '\n\r'`). The variable `CODEX_HOME` is set from `${{ steps.resolve_home.outputs.codex-home }}` in the `env:` block, then used unsanitized in: `echo "server_info_file=$server_info_file" >> "$GITHUB_OUTPUT"`. A malicious value containing newlines could inject additional key=value pairs into the GitHub output context.
+In the 'Determine server info path' step, the variable `server_info_file` is constructed from `$CODEX_HOME` (sourced from `steps.resolve_home.outputs.codex-home`, a `steps.*.outputs.*` value) and `$CODEX_RUN_ID` (sourced from `github.run_id`, a `github.*` value). Both are untrusted per the check rules. The composed value is then written directly to `$GITHUB_OUTPUT` via `echo "server_info_file=$server_info_file" >> "$GITHUB_OUTPUT"` without the required sanitization step (`printf '%s' ... | tr -d '\n\r'`). A caller-controlled Codex home path or a crafted run ID containing newlines could inject arbitrary key=value pairs into the GitHub output environment.
 
 Locations:
 
-- `action.yml:166`
+- `action.yml:175`
+
+### missing-permissions (severity: medium)
+
+The workflow file `.github/workflows/ci.yml` has no top-level `permissions:` key and its only job (`verify`) also has no job-level `permissions:` key. Without explicit permissions, the job inherits the repository's default token permissions, which may be overly broad (e.g., write access to contents). A minimal permissions block such as `permissions: contents: read` should be added.
+
+Locations:
+
+- `.github/workflows/ci.yml:1`
 
 ## Iteration Notes
 
 ### Iteration 1
 
-**Fixes applied:** github-env-injection
+**Fixes applied:** github-env-injection, missing-permissions
 
 **Notes:**
 
-Fixed the 'Determine server info path' step in action.yml. The step now sanitizes the `server_info_file` value before writing it to $GITHUB_OUTPUT by using `safe_server_info_file=$(printf '%s' "$server_info_file" | tr -d '\n\r')` and then echoing the sanitized value. This prevents a malicious `CODEX_HOME` value containing newlines from injecting additional key=value pairs into the GitHub output context.
+1. Fixed github-env-injection in action.yml line 175: Added sanitization of the `server_info_file` value using `printf '%s' "$server_info_file" | tr -d '\n\r'` before writing to $GITHUB_OUTPUT. The sanitized value is stored in `safe_server_info_file` which is then written to the output instead of the raw composed path. 2. Fixed missing-permissions in .github/workflows/ci.yml: Added a top-level `permissions: contents: read` block, which is the minimal permission required for the workflow (checkout only needs read access to repository contents).
 

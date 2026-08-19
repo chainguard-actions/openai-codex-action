@@ -1,4 +1,4 @@
-name: Test no-prompt scenario (action skips codex run)
+name: Test sandbox read-only mode (no prompt, no API key)
 on:
   workflow_dispatch:
 jobs:
@@ -7,27 +7,29 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Run action with no prompt (codex exec step should be skipped)
+      - name: Run action with sandbox=read-only and no prompt
         id: action
         uses: .
         with:
-          # No prompt or prompt-file provided — run_codex step should be skipped
+          sandbox: "read-only"
           safety-strategy: "unsafe"
+          # No prompt — codex exec step is skipped
           # No openai-api-key — proxy steps are also skipped
           # allow-users '*' bypasses the write-access API check under act
           allow-users: "*"
           # Provide a valid version so npm install does not fail with empty @
           codex-version: "latest"
 
-      - name: Assert final-message output is empty when no prompt given
+      - name: Assert action completed without error
         env:
           FINAL_MSG: ${{ steps.action.outputs['final-message'] }}
         run: |
           echo "final-message: '$FINAL_MSG'"
-          # When no prompt is provided, the run_codex step is skipped,
-          # so the output should be empty.
+          # No prompt was given, so final-message should be empty.
+          # The key assertion is that the action accepted sandbox=read-only
+          # and completed the setup steps without error.
           if [ -n "$FINAL_MSG" ]; then
             echo "FAIL: expected empty final-message but got: $FINAL_MSG"
             exit 1
           fi
-          echo "PASS: final-message is empty as expected when no prompt is given"
+          echo "PASS: action completed with sandbox=read-only"
