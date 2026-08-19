@@ -1,0 +1,53 @@
+name: Test no-prompt skips codex exec
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Create a mock npm that skips installing @openai/codex packages.
+      # The mock finds the real npm by searching PATH while skipping its own
+      # directory, so it works even after actions/setup-node modifies PATH.
+      - name: Install mock npm
+        run: |
+          mkdir -p /tmp/mock-bin
+          printf '%s\n' '#!/bin/sh' \
+            'case "$*" in' \
+            '  *install*@openai/codex*)' \
+            '    echo "Mock npm: skipping $*"; exit 0 ;;' \
+            'esac' \
+            'IFS=":"' \
+            'for dir in $PATH; do' \
+            '  [ "$dir" = "/tmp/mock-bin" ] && continue' \
+            '  [ -x "$dir/npm" ] && exec "$dir/npm" "$@"' \
+            'done' \
+            'echo "real npm not found" >&2; exit 1' \
+            > /tmp/mock-bin/npm
+          chmod +x /tmp/mock-bin/npm
+          echo "/tmp/mock-bin" >> "$GITHUB_PATH"
+
+      # When neither prompt nor prompt-file is provided, the action should
+      # complete setup steps but skip the run_codex step entirely.
+      # No openai-api-key means proxy steps are also skipped.
+      - id: action
+        uses: .
+        with:
+          prompt: ""
+          prompt-file: ""
+          openai-api-key: ""
+          safety-strategy: "unsafe"
+          allow-users: "*"
+
+      - name: Assert final-message is empty when no prompt given
+        env:
+          ACTUAL: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "actual: '$ACTUAL'"
+          # When no prompt is provided, run_codex step is skipped so output is empty
+          if [ -n "$ACTUAL" ]; then
+            echo "FAIL: expected empty final-message when no prompt provided, got: $ACTUAL"
+            exit 1
+          fi
+          echo "PASS: final-message is empty as expected when no prompt provided"

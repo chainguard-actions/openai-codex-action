@@ -1,0 +1,33 @@
+name: Test custom codex-home directory
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTOR: test-user
+      GITHUB_REPOSITORY: test-owner/test-repo
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create custom codex home directory
+        run: mkdir -p /tmp/custom-codex-home
+
+      - id: action
+        uses: .
+        with:
+          codex-home: /tmp/custom-codex-home
+          allow-users: "*"
+          safety-strategy: unsafe
+          # No prompt so codex exec is skipped
+          prompt: ""
+          prompt-file: ""
+
+      - name: Assert custom codex-home was used
+        run: |
+          echo "Checking that custom codex-home directory exists and was used"
+          if [ ! -d "/tmp/custom-codex-home" ]; then
+            echo "FAIL: custom codex-home directory does not exist"
+            exit 1
+          fi
+          echo "PASS: custom codex-home directory exists"

@@ -1,0 +1,52 @@
+name: Test custom codex-home directory
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Create a mock npm that skips installing @openai/codex packages.
+      # The mock finds the real npm by searching PATH while skipping its own
+      # directory, so it works even after actions/setup-node modifies PATH.
+      - name: Install mock npm
+        run: |
+          mkdir -p /tmp/mock-bin
+          printf '%s\n' '#!/bin/sh' \
+            'case "$*" in' \
+            '  *install*@openai/codex*)' \
+            '    echo "Mock npm: skipping $*"; exit 0 ;;' \
+            'esac' \
+            'IFS=":"' \
+            'for dir in $PATH; do' \
+            '  [ "$dir" = "/tmp/mock-bin" ] && continue' \
+            '  [ -x "$dir/npm" ] && exec "$dir/npm" "$@"' \
+            'done' \
+            'echo "real npm not found" >&2; exit 1' \
+            > /tmp/mock-bin/npm
+          chmod +x /tmp/mock-bin/npm
+          echo "/tmp/mock-bin" >> "$GITHUB_PATH"
+
+      # Test that a custom codex-home directory is accepted and used.
+      # No prompt means codex exec is skipped; no api-key means proxy is skipped.
+      - id: action
+        uses: .
+        with:
+          prompt: ""
+          openai-api-key: ""
+          safety-strategy: "unsafe"
+          codex-home: "/tmp/test-codex-home"
+          allow-users: "*"
+
+      - name: Assert action completed with custom codex-home
+        env:
+          ACTUAL: ${{ steps.action.outputs['final-message'] }}
+        run: |
+          echo "actual: '$ACTUAL'"
+          # No prompt was given so final-message should be empty
+          if [ -n "$ACTUAL" ]; then
+            echo "FAIL: expected empty output when no prompt given, got: $ACTUAL"
+            exit 1
+          fi
+          echo "PASS: action accepted custom codex-home"
