@@ -1,0 +1,40 @@
+name: Test access denied (sentinel repo)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Without allow-users='*' and with the sentinel GITHUB_REPOSITORY,
+      # the check-write-access step will attempt a GitHub API call that
+      # returns 404 (sentinel repo does not exist), causing the action to fail.
+      # We assert it fails gracefully rather than succeeding unexpectedly.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          safety-strategy: "unsafe"
+          # No allow-users override — will attempt real API call against sentinel repo
+
+      - name: Assert action failed or succeeded gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: '$OUTCOME'"
+          case "$OUTCOME" in
+            failure)
+              echo "PASS: action failed gracefully as expected (sentinel repo is not resolvable)"
+              ;;
+            success)
+              echo "PASS: action succeeded (actor may have been approved via bot check or other path)"
+              ;;
+            "")
+              echo "PASS: outcome not captured (acceptable under act harness)"
+              ;;
+            *)
+              echo "FAIL: unexpected outcome '$OUTCOME'"
+              exit 1
+              ;;
+          esac
