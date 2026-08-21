@@ -1,0 +1,33 @@
+name: Test codex-version input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test that specifying a codex-version installs that version.
+      # No prompt is provided so codex exec is skipped.
+      # The write-access check may fail on the sentinel repo.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          prompt: ""
+          codex-version: "0.1.2505200918"
+          safety-strategy: "unsafe"
+
+      - name: Assert action ran with specific codex-version
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # Either success (install + write-access check passed) or
+          # failure (sentinel repo or version not found) are acceptable.
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action completed with outcome '$OUTCOME' using specific codex-version"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

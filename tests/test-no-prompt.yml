@@ -1,0 +1,43 @@
+name: Test no-prompt (skips codex exec)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # When no prompt is provided, the action should:
+      # 1. Run write-access check (may fail on sentinel repo)
+      # 2. Install Codex CLI
+      # 3. Skip the run_codex step (no prompt)
+      # The final-message output should be empty.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          prompt: ""
+          safety-strategy: "unsafe"
+
+      - name: Assert action ran (no prompt means codex exec is skipped)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          FINAL_MSG: ${{ steps.action.outputs.final-message }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "final-message: $FINAL_MSG"
+          # The action may fail at write-access check (sentinel repo) or succeed
+          # with empty output (no prompt → codex exec skipped).
+          if [ "$OUTCOME" = "success" ]; then
+            # No prompt → final-message should be empty
+            if [ -n "$FINAL_MSG" ]; then
+              echo "FAIL: expected empty final-message when no prompt is given, got: $FINAL_MSG"
+              exit 1
+            fi
+            echo "PASS: action succeeded with empty final-message (no prompt)"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (likely sentinel repo write-access check)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

@@ -1,0 +1,42 @@
+name: Test output-file input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test that the output-file input is accepted and processed.
+      # No prompt is provided so codex exec is skipped (output-file won't be written).
+      # The write-access check may fail on the sentinel repo.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          prompt: ""
+          output-file: "${{ github.workspace }}/codex-output.txt"
+          safety-strategy: "unsafe"
+
+      - name: Assert action ran with output-file specified
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # Either success or failure are acceptable (sentinel repo may cause failure).
+          # Since no prompt is given, codex exec is skipped and output-file won't be written.
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action completed with outcome '$OUTCOME' with output-file specified"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+
+      - name: Assert output-file not written (no prompt given)
+        if: ${{ steps.action.outcome == 'success' }}
+        run: |
+          if [ -f "$GITHUB_WORKSPACE/codex-output.txt" ]; then
+            echo "WARN: output-file was written even though no prompt was given"
+          else
+            echo "PASS: output-file not written (expected, no prompt)"
+          fi

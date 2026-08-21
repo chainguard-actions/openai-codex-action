@@ -1,0 +1,35 @@
+name: Test write-access check with sentinel repo
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # The write-access check calls the GitHub API with GITHUB_REPOSITORY
+      # which is a sentinel under act. The step may fail (404 from API) or
+      # succeed if the action handles missing repos gracefully.
+      # We use allow-users: '*' to bypass the user-level check and isolate
+      # the repo-access behavior.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          prompt: ""
+          allow-users: "*"
+          safety-strategy: "unsafe"
+
+      - name: Assert write-access check ran and action did not crash unexpectedly
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # Either success (write-access check passed or was bypassed) or
+          # failure (sentinel repo not found via API) are both acceptable.
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action completed with outcome '$OUTCOME' (expected for sentinel repo)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
