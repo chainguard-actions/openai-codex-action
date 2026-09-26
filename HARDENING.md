@@ -10,33 +10,25 @@
 
 **Harden Agent Version:** `2`
 
-Action **openai--codex-action/v1.8** was hardened automatically. 2 finding(s) were identified and resolved across 1 iteration(s).
+Action **openai--codex-action/v1.8** was hardened automatically. 1 finding(s) were identified and resolved across 1 iteration(s).
 
 ## Findings Fixed
 
 ### github-env-injection (severity: high)
 
-In the 'Determine server info path' step of action.yml, the value `server_info_file=$server_info_file` is written to $GITHUB_OUTPUT without sanitization. The variable `server_info_file` is composed from `$CODEX_HOME` (sourced from `steps.resolve_home.outputs.codex-home`, a step output) and `$CODEX_RUN_ID` (sourced from `github.run_id`, a GitHub context value). Both are untrusted inputs per the check rules. The required sanitization step (`printf '%s' "$VAR" | tr -d '\n\r'`) is not applied before the write, allowing a newline injection attack that could poison subsequent steps reading from GITHUB_OUTPUT. The offending line is: `echo "server_info_file=$server_info_file" >> "$GITHUB_OUTPUT"`
+The 'Determine server info path' step writes an unsanitized value to $GITHUB_OUTPUT. The variable `server_info_file` is constructed from `$CODEX_HOME` (sourced from `steps.resolve_home.outputs.codex-home`, a prior step output) and `$CODEX_RUN_ID` (sourced from `github.run_id`). Both are untrusted inputs per the check rules. The write `echo "server_info_file=$server_info_file" >> "$GITHUB_OUTPUT"` is not preceded by the required sanitization step (`printf '%s' ... | tr -d '\n\r'`). A malicious caller could inject newlines into the step output to poison subsequent GITHUB_OUTPUT entries.
 
 Locations:
 
-- `action.yml:158`
-
-### missing-permissions (severity: medium)
-
-The workflow file ci.yml has no top-level `permissions:` key, and its only job (`verify`) also has no job-level `permissions:` key. Without explicit permissions, the job inherits the default repository token permissions, which may be overly broad (e.g., write access to contents). A minimal permissions block such as `permissions: contents: read` should be added.
-
-Locations:
-
-- `.github/workflows/ci.yml:1`
+- `action.yml:163`
 
 ## Iteration Notes
 
 ### Iteration 1
 
-**Fixes applied:** github-env-injection, missing-permissions
+**Fixes applied:** github-env-injection
 
 **Notes:**
 
-1. Fixed github-env-injection in action.yml 'Determine server info path' step: added sanitization of the server_info_file value using `printf '%s' "$server_info_file" | tr -d '\n\r'` before writing to $GITHUB_OUTPUT, preventing newline injection via CODEX_HOME (step output) or CODEX_RUN_ID (github.run_id). 2. Fixed missing-permissions in .github/workflows/ci.yml: added top-level `permissions: contents: read` block, which is the minimum permission needed for the workflow (repository checkout).
+Fixed the 'Determine server info path' step in action.yml (around line 163). The step now sanitizes the `server_info_file` value before writing it to $GITHUB_OUTPUT. Added `safe_server_info_file="$(printf '%s' "$server_info_file" | tr -d '\n\r')"` and changed the echo to use `$safe_server_info_file` instead of `$server_info_file`. This prevents newline injection attacks where CODEX_HOME (from a prior step output) or CODEX_RUN_ID (from github.run_id) could contain newlines that would poison subsequent GITHUB_OUTPUT entries.
 
