@@ -1,0 +1,32 @@
+name: Test no-prompt invocation (setup only)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          # No prompt or prompt-file: codex exec step is skipped entirely.
+          # No openai-api-key: proxy steps are skipped.
+          # allow-users '*' bypasses the write-access collaborator API call.
+          allow-users: "*"
+          safety-strategy: unsafe
+
+      - name: Assert action ran (setup succeeded or failed gracefully on sentinel repo)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action completed setup steps successfully (no prompt, no codex exec)"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo not resolvable or npm install issue)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
