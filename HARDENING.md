@@ -16,14 +16,15 @@ Action **openai--codex-action/v1.6** was hardened automatically. 1 finding(s) we
 
 ### github-env-injection (severity: high)
 
-In the 'Determine server info path' step of action.yml, the shell variable `server_info_file` is constructed from `$CODEX_HOME` (which is the output of the `resolve_home` step, itself derived from the user-controlled input `inputs['codex-home']`) and then written directly to `$GITHUB_OUTPUT` without sanitization:
+The 'Determine server info path' step constructs a path from $CODEX_HOME (sourced from steps.resolve_home.outputs.codex-home, a steps.*.outputs.* value) and $CODEX_RUN_ID (sourced from github.run_id), then writes it directly to $GITHUB_OUTPUT without sanitization. Neither value is passed through `printf '%s' ... | tr -d '\n\r'` before the write. A malicious value containing newlines in either variable could inject arbitrary key=value pairs into the GitHub output context.
 
-```
-server_info_file="$CODEX_HOME/$CODEX_RUN_ID.json"
-echo "server_info_file=$server_info_file" >> "$GITHUB_OUTPUT"
-```
+Offending line:
+  echo "server_info_file=$server_info_file" >> "$GITHUB_OUTPUT"
 
-An attacker who controls the `codex-home` input can inject newlines into `$CODEX_HOME`, which would allow them to inject arbitrary key=value pairs into `$GITHUB_OUTPUT`, potentially overwriting outputs consumed by later steps. The required sanitization step (`printf '%s' "$server_info_file" | tr -d '\n\r'`) is missing before the write.
+Fix: sanitize both components before use, e.g.:
+  safe_home=$(printf '%s' "$CODEX_HOME" | tr -d '\n\r')
+  safe_run_id=$(printf '%s' "$CODEX_RUN_ID" | tr -d '\n\r')
+  echo "server_info_file=$safe_home/$safe_run_id.json" >> "$GITHUB_OUTPUT"
 
 Locations:
 
@@ -37,5 +38,5 @@ Locations:
 
 **Notes:**
 
-Fixed the 'Determine server info path' step in action.yml (line 163). The `server_info_file` value, which is constructed from the user-controlled `$CODEX_HOME` input, is now sanitized with `printf '%s' "$server_info_file" | tr -d '\n\r'` before being written to `$GITHUB_OUTPUT`. This prevents an attacker from injecting newlines into the `codex-home` input to inject arbitrary key=value pairs into `$GITHUB_OUTPUT`.
+Fixed the 'Determine server info path' step in action.yml (around line 163). Both CODEX_HOME (sourced from steps.resolve_home.outputs.codex-home) and CODEX_RUN_ID (sourced from github.run_id) are now sanitized using `printf '%s' "$VAR" | tr -d '\n\r'` before being used to construct the server_info_file path that is written to $GITHUB_OUTPUT. This prevents newline injection attacks that could inject arbitrary key=value pairs into the GitHub output context.
 
