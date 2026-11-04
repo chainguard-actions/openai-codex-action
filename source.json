@@ -4,9 +4,13 @@
   "version": "v1.11",
   "commit_sha": "52fe01ec70a42f454c9d2ebd47598f9fd6893d56",
   "url": "https://github.com/openai/codex-action",
-  "policy_sha": "d636be7e43ef829af6e853da6b3c7566db9f72fe",
+  "policy_sha": "374911c4be584df24e6da57af2d990570ef0f859",
   "test_policy_sha": "843adf9e4b8f85d0c08b27b9d0b09dd094b54702",
   "test_agent_version": "2",
   "harden_agent_version": "2",
-  "dependency_fingerprint": "sha256:9f9f4b38f5fbfaf0d7c62a6989dec8deba4af2d3f236170c217fcfdbef83a4dc"
+  "dist_artifact": {
+    "gcs_uri": "gs://patch-actions-node-artifacts/dist-artifacts/openai/codex-action/v1.11/sha256-5cc504d787e832877f26fc199d2d5f17de9834b0bd04484ebd8946631ffcb79d.tar.gz",
+    "sha256": "5cc504d787e832877f26fc199d2d5f17de9834b0bd04484ebd8946631ffcb79d",
+    "size_bytes": 853653
+  }
 }
